@@ -1,0 +1,25 @@
+{
+  "name": "@lusego.app/lsd",
+  "version": "0.1.0",
+  "scripts": {
+    "format": "prettier --cache --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "prettier": "3.7.4",
+    "typescript": "^5.8"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "^24"
+    }
+  },
+  "private": true,
+  "prettier": {
+    "experimentalTernaries": true
+  }
+}
