@@ -19,6 +19,7 @@
     }
   },
   "private": true,
+  "type": "module",
   "prettier": {
     "experimentalTernaries": true
   }
