@@ -1,0 +1,32 @@
+services:
+  app:
+    image: node:24
+    working_dir: /workspace
+    command: sleep infinity
+    volumes:
+      - .:/workspace:cached
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      tap:
+        condition: service_started
+
+  gateway:
+    image: ghcr.io/drizzle-team/gateway:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4983:4983"
+    volumes:
+      - gateway-data:/app
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+volumes:
+  gateway-data:
