@@ -1,6 +1,10 @@
 {
   "name": "@lusego.app/lsd",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/honeygooner/lsd"
+  },
   "scripts": {
     "format": "prettier --cache --write ."
   },
@@ -26,6 +30,6 @@
   "private": true,
   "type": "module",
   "prettier": {
-    "experimentalTernaries": true
+    "printWidth": 100
   }
 }
