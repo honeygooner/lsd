@@ -3,14 +3,7 @@ import { NodeHttpClient } from "@effect/platform-node";
 import { Chunk, Data, Effect, Function, Option, RateLimiter, Schema, Stream } from "effect";
 import { USER_AGENT } from "./util.ts";
 
-class DanbooruError extends Data.TaggedError("DanbooruError")<typeof DanbooruError.Fields.Type> {
-  static readonly Fields = Schema.Struct({
-    success: Schema.Literal(false),
-    error: Schema.String,
-    message: Schema.String,
-    backtrace: Schema.NullOr(Schema.Array(Schema.String)),
-  });
-}
+class DanbooruError extends Data.TaggedError("DanbooruError")<typeof ResponseError.Type> {}
 
 class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
   dependencies: [NodeHttpClient.layer],
@@ -41,7 +34,7 @@ class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
                 "2xx": (response) => Effect.succeed(response),
                 orElse: (response) =>
                   Function.pipe(
-                    Effect.flatMap(response.json, Schema.decodeUnknown(DanbooruError.Fields)),
+                    Effect.flatMap(response.json, Schema.decodeUnknown(ResponseError)),
                     Effect.flatMap((fields) => new DanbooruError(fields)),
                   ),
               }),
@@ -52,19 +45,29 @@ class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
     ),
 }) {}
 
+const PaginationItem = Schema.Struct({
+  id: Schema.extend(Schema.Positive, Schema.Int),
+});
+
+const ResponseError = Schema.Struct({
+  success: Schema.Literal(false),
+  error: Schema.String,
+  message: Schema.String,
+  backtrace: Schema.NullOr(Schema.Array(Schema.String)),
+});
+
+const ArtistUrl = Schema.Struct({
+  id: Schema.extend(Schema.Positive, Schema.Int),
+  artist_id: Schema.extend(Schema.Positive, Schema.Int),
+  url: Schema.URL,
+  created_at: Schema.Date,
+  updated_at: Schema.Date,
+  is_active: Schema.Boolean,
+});
+
 export const makeLayer = Danbooru.Default.bind(Danbooru);
 
-export const getArtistUrls = getItems(
-  HttpClientRequest.get("/artist_urls.json"),
-  Schema.Struct({
-    id: Schema.Number,
-    artist_id: Schema.Number,
-    url: Schema.String,
-    created_at: Schema.Date,
-    updated_at: Schema.Date,
-    is_active: Schema.Boolean,
-  }),
-);
+export const getArtistUrls = getItems(HttpClientRequest.get("/artist_urls.json"), ArtistUrl);
 export const getArtistUrlsStream = getItemsStream(getArtistUrls);
 
 function getItems<A, I, R>(
@@ -82,8 +85,10 @@ function getItems<A, I, R>(
       },
     });
 
-    // NOTE: all this tomfoolery is typescript wizardry to get `getItemsStream` working easily...
-    // luckily, this also has the added benefit of improving hover tooltips :D
+    // TODO: simplify this section for ease of maintenance
+    // this typescript wizardry is just to improve hover tooltips
+    // the following code works as well:
+    // const newSchema = keys ? schema.pipe(Schema.pick(...keys)) : schema;
     const pick = (keys: Keys) => schema.pipe(Schema.pick(...keys));
     const newSchema = keys
       ? (pick(keys) as Keys extends undefined ? never : ReturnType<typeof pick>)
@@ -96,15 +101,22 @@ function getItems<A, I, R>(
   };
 }
 
-function getItemsStream<Keys extends readonly string[], Item extends { readonly id: number }, E, R>(
+function getItemsStream<Keys extends readonly string[], Item, E, R>(
   getItems: (urlParams?: CommonUrlParameters<Keys>) => Effect.Effect<readonly Item[], E, R>,
 ) {
   return (urlParams?: CommonUrlParameters<Keys>) =>
     Stream.paginateChunkEffect(undefined as CommonUrlParameters<Keys>["page"], (page) =>
-      Effect.map(getItems({ ...urlParams, page }), (items) => [
-        Chunk.fromIterable(items),
-        Option.map(Option.fromNullable(items.at(-1)), (item) => `b${item.id}` as const),
-      ]),
+      Effect.flatMap(getItems({ ...urlParams, page }), (items) =>
+        Function.pipe(
+          Option.fromNullable(items.at(-1)),
+          Option.map(Schema.decodeUnknown(PaginationItem)),
+          Effect.transposeOption,
+          Effect.map((item) => [
+            Chunk.fromIterable(items),
+            Option.map(item, ({ id }) => `b${id}` as const),
+          ]),
+        ),
+      ),
     );
 }
 
@@ -113,8 +125,6 @@ function getItemsStream<Keys extends readonly string[], Item extends { readonly 
  * @todo migrate this type to a {@linkcode Schema} for improved validation
  */
 type CommonUrlParameters<Keys extends readonly string[]> = {
-  /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters#dtext-format | Danbooru Wiki | help:common url parameters} */
-  readonly format?: "json"; // NOTE: currently only `"json"` is supported
   /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters#dtext-limit | Danbooru Wiki | help:common url parameters} */
   readonly limit?: number;
   /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters#dtext-page | Danbooru Wiki | help:common url parameters} */
