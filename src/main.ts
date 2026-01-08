@@ -6,6 +6,7 @@ import * as Danbooru from "./danbooru.ts";
 const program = Function.pipe(
   Danbooru.getArtistUrlsStream({
     limit: 1000,
+    only: ["id", "url"],
     search: {
       url_matches: "*://bsky.app/profile/*",
     },
