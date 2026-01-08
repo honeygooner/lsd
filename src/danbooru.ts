@@ -3,7 +3,16 @@ import { NodeHttpClient } from "@effect/platform-node";
 import { Chunk, Data, Effect, Function, Option, RateLimiter, Schema, Stream } from "effect";
 import { USER_AGENT } from "./util.ts";
 
-class DanbooruError extends Data.TaggedError("DanbooruError")<typeof ResponseError.Type> {}
+class DanbooruError extends Data.TaggedError("DanbooruError")<typeof ResponseError.Type> {
+  constructor(fields: typeof ResponseError.Type) {
+    super(fields);
+    this.message = `${fields.status || ""} ${fields.message || ""}`.trim();
+    this.cause = Object.assign<Error, Partial<Error>>(new Error(fields.message), {
+      name: fields.error,
+      stack: fields.backtrace?.join("\n"),
+    });
+  }
+}
 
 class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
   dependencies: [NodeHttpClient.layer],
@@ -32,10 +41,10 @@ class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
               rateLimiter(effect),
               HttpClientResponse.matchStatus({
                 "2xx": (response) => Effect.succeed(response),
-                orElse: (response) =>
+                orElse: ({ json, status }) =>
                   Function.pipe(
-                    Effect.flatMap(response.json, Schema.decodeUnknown(ResponseError)),
-                    Effect.flatMap((fields) => new DanbooruError(fields)),
+                    Effect.flatMap(json, Schema.decodeUnknown(ResponseError)),
+                    Effect.flatMap((fields) => new DanbooruError({ ...fields, status })),
                   ),
               }),
             ),
@@ -51,15 +60,16 @@ const PaginationItem = Schema.Struct({
 
 const ResponseError = Schema.Struct({
   success: Schema.Literal(false),
-  error: Schema.String,
-  message: Schema.String,
+  error: Schema.Trimmed,
+  message: Schema.Trimmed,
   backtrace: Schema.NullOr(Schema.Array(Schema.String)),
+  status: Schema.optional(Schema.Number),
 });
 
 const ArtistUrl = Schema.Struct({
-  id: Schema.extend(Schema.Positive, Schema.Int),
-  artist_id: Schema.extend(Schema.Positive, Schema.Int),
-  url: Schema.URL,
+  id: Schema.Number,
+  artist_id: Schema.Number,
+  url: Schema.String,
   created_at: Schema.Date,
   updated_at: Schema.Date,
   is_active: Schema.Boolean,
@@ -67,7 +77,7 @@ const ArtistUrl = Schema.Struct({
 
 export const makeLayer = Danbooru.Default.bind(Danbooru);
 
-export const getArtistUrls = getItems(HttpClientRequest.get("/artist_urls.json"), ArtistUrl);
+export const getArtistUrls = getItems(HttpClientRequest.get("/artist_urls"), ArtistUrl);
 export const getArtistUrlsStream = getItemsStream(getArtistUrls);
 
 function getItems<A, I, R>(
