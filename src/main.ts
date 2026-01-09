@@ -16,9 +16,8 @@ const program = Function.pipe(
     concurrency: 5,
   }),
   Stream.filterMap(Function.identity),
-  Stream.map(({ data }) => data.did),
-  Stream.changes,
-  Stream.tap(Effect.log),
+  Stream.changesWith((a, b) => a.data.did === b.data.did),
+  Stream.tap(({ data }) => Effect.log(data.did)),
   Stream.runDrain,
 );
 
