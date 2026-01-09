@@ -9,6 +9,7 @@
     "format": "prettier --cache --write ."
   },
   "dependencies": {
+    "@atproto/api": "^0.18.13",
     "@effect/platform": "^0.94.1",
     "@effect/platform-node": "^0.104.0",
     "effect": "^3.19.14"

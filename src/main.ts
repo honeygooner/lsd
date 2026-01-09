@@ -12,12 +12,17 @@ const program = Function.pipe(
     },
   }),
   Stream.filterMap(({ url }) => Bluesky.getIdentifierFromProfileUrl(url)),
+  Stream.mapEffect((actor) => Bluesky.getProfile({ actor }).pipe(Effect.option), {
+    concurrency: 5,
+  }),
+  Stream.filterMap(Function.identity),
+  Stream.map(({ data }) => data.did),
+  Stream.changes,
   Stream.tap(Effect.log),
   Stream.runDrain,
 );
 
 Function.pipe(
-  program,
-  Effect.provide([Danbooru.makeLayer("testbooru")]),
-  NodeRuntime.runMain({ disablePrettyLogger: true }),
+  Effect.provide(program, [Bluesky.layer, Danbooru.makeLayer("testbooru")]),
+  NodeRuntime.runMain(),
 );
