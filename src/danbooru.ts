@@ -60,8 +60,8 @@ const PaginationItem = Schema.Struct({
 
 const ResponseError = Schema.Struct({
   success: Schema.Literal(false),
-  error: Schema.Trimmed,
-  message: Schema.Trimmed,
+  error: Schema.String,
+  message: Schema.String,
   backtrace: Schema.NullOr(Schema.Array(Schema.String)),
   status: Schema.optional(Schema.Number),
 });
