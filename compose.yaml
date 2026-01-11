@@ -1,27 +1,28 @@
 services:
-  postgres:
-    image: postgres:18
-    restart: unless-stopped
+  app:
+    build: .
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      SQLITE_PATH: /data/db.sqlite
+      TAP_URL: http://tap:2480
+    depends_on:
+      tap:
+        condition: service_healthy
     volumes:
-      - postgres-data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      - app_data:/data
 
   tap:
     image: ghcr.io/bluesky-social/indigo/tap:latest
+    platform: linux/amd64
     restart: unless-stopped
     volumes:
-      - tap-data:/data
-    # tap is in beta and does not yet have arm-based distributions
-    platform: linux/amd64
+      - tap_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:2480/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
 volumes:
-  postgres-data:
-  tap-data:
+  app_data:
+  tap_data:

@@ -6,6 +6,7 @@
     "url": "https://github.com/honeygooner/lsd"
   },
   "scripts": {
+    "start": "node src/main.ts",
     "format": "prettier --cache --write ."
   },
   "dependencies": {
