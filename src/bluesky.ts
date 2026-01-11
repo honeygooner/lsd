@@ -1,7 +1,6 @@
 import { Agent } from "@atproto/api";
-import { Data, Effect, Option } from "effect";
-
-class BlueskyError extends Data.TaggedError("BlueskyError")<{ cause?: unknown }> {}
+import { XRPCError } from "@atproto/xrpc";
+import { Effect, Option, Schema } from "effect";
 
 class Bluesky extends Effect.Service<Bluesky>()("Bluesky", {
   sync: () => ({ agent: new Agent("https://public.api.bsky.app") }),
@@ -13,7 +12,7 @@ export const Live = Bluesky.Default;
 export const getProfile = (actor: string) =>
   Effect.tryMapPromise(Bluesky, {
     try: ({ agent }, signal) => agent.getProfile({ actor }, { signal }),
-    catch: (error) => new BlueskyError({ cause: error }),
+    catch: Schema.decodeUnknownSync(Schema.instanceOf(XRPCError)),
   });
 
 export const getIdentifierFromProfileUrl = (url: string | URL) => {

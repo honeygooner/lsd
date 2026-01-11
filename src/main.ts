@@ -1,5 +1,5 @@
 import { NodeRuntime } from "@effect/platform-node";
-import { Effect, Function, Stream } from "effect";
+import { Effect, Function, Logger, LogLevel, Stream } from "effect";
 import * as Bluesky from "./bluesky.ts";
 import * as Danbooru from "./danbooru.ts";
 
@@ -11,16 +11,21 @@ const program = Function.pipe(
     },
   }),
   Stream.filterMap(({ url }) => Bluesky.getIdentifierFromProfileUrl(url)),
-  Stream.mapEffect((actor) => Effect.option(Bluesky.getProfile(actor)), {
-    concurrency: 5,
-  }),
+  Stream.mapEffect(
+    (actor) =>
+      Effect.matchCauseEffect(Bluesky.getProfile(actor), {
+        onFailure: (cause) => Effect.tap(Effect.succeedNone, Effect.logWarning(cause, actor)),
+        onSuccess: (response) => Effect.tap(Effect.succeedSome(response), Effect.logDebug(actor)),
+      }),
+    { concurrency: 10 },
+  ),
   Stream.filterMap(Function.identity),
   Stream.changesWith((a, b) => a.data.did === b.data.did),
-  Stream.tap(({ data }) => Effect.log(data.did)),
   Stream.runDrain,
 );
 
 Function.pipe(
   Effect.provide(program, [Bluesky.Live, Danbooru.Test]),
-  NodeRuntime.runMain({ disablePrettyLogger: true }),
+  Logger.withMinimumLogLevel(LogLevel.Debug),
+  NodeRuntime.runMain(),
 );
