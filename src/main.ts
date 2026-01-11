@@ -6,13 +6,12 @@ import * as Danbooru from "./danbooru.ts";
 const program = Function.pipe(
   Danbooru.getArtistUrlsStream({
     limit: 1000,
-    only: ["id", "url"],
     search: {
       url_matches: "*://bsky.app/profile/*",
     },
   }),
   Stream.filterMap(({ url }) => Bluesky.getIdentifierFromProfileUrl(url)),
-  Stream.mapEffect((actor) => Bluesky.getProfile({ actor }).pipe(Effect.option), {
+  Stream.mapEffect((actor) => Effect.option(Bluesky.getProfile(actor)), {
     concurrency: 5,
   }),
   Stream.filterMap(Function.identity),
@@ -21,7 +20,4 @@ const program = Function.pipe(
   Stream.runDrain,
 );
 
-Function.pipe(
-  Effect.provide(program, [Bluesky.layer, Danbooru.makeLayer("testbooru")]),
-  NodeRuntime.runMain(),
-);
+Function.pipe(Effect.provide(program, [Bluesky.layer, Danbooru.layerTest]), NodeRuntime.runMain());
