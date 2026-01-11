@@ -7,13 +7,13 @@ class DanbooruError extends Data.TaggedError("DanbooruError")<{ cause?: unknown 
 
 class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
   dependencies: [NodeHttpClient.layer],
-  scoped: (server: "danbooru" | "testbooru") =>
+  scoped: (baseUrl: string) =>
     Effect.map(
       HttpClient.HttpClient,
       Function.compose(
         HttpClient.mapRequest(
           Function.flow(
-            HttpClientRequest.prependUrl(`https://${server}.donmai.us`),
+            HttpClientRequest.prependUrl(baseUrl),
             HttpClientRequest.setHeader("Accept", "application/json"),
             HttpClientRequest.setHeader("User-Agent", USER_AGENT),
             HttpClientRequest.setUrlParam("format", "json"),
@@ -31,8 +31,8 @@ class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
     ),
 }) {}
 
-export const layer = Danbooru.Default("danbooru");
-export const layerTest = Danbooru.Default("testbooru");
+export const Live = Danbooru.Default("https://danbooru.donmai.us");
+export const Test = Danbooru.Default("https://testbooru.donmai.us");
 
 class ArtistUrl extends Schema.Class<ArtistUrl>("ArtistUrl")({
   id: Schema.Number,

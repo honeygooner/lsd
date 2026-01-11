@@ -20,4 +20,7 @@ const program = Function.pipe(
   Stream.runDrain,
 );
 
-Function.pipe(Effect.provide(program, [Bluesky.layer, Danbooru.layerTest]), NodeRuntime.runMain());
+Function.pipe(
+  Effect.provide(program, [Bluesky.Live, Danbooru.Test]),
+  NodeRuntime.runMain({ disablePrettyLogger: true }),
+);

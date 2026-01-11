@@ -7,7 +7,7 @@ class Bluesky extends Effect.Service<Bluesky>()("Bluesky", {
   sync: () => ({ agent: new Agent("https://public.api.bsky.app") }),
 }) {}
 
-export const layer = Bluesky.Default;
+export const Live = Bluesky.Default;
 
 /** @see {@link https://docs.bsky.app/docs/api/app-bsky-actor-get-profile | Bluesky | app.bsky.actor.getProfile} */
 export const getProfile = (actor: string) =>
