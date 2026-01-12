@@ -8,10 +8,9 @@ class Bluesky extends Effect.Service<Bluesky>()("Bluesky", {
 
 export const Live = Bluesky.Default;
 
-/** @see {@link https://docs.bsky.app/docs/api/app-bsky-actor-get-profile | Bluesky | app.bsky.actor.getProfile} */
-export const getProfile = (actor: string) =>
+export const use = <A>(callback: (agent: Agent, signal: AbortSignal) => PromiseLike<A>) =>
   Effect.tryMapPromise(Bluesky, {
-    try: ({ agent }, signal) => agent.getProfile({ actor }, { signal }),
+    try: ({ agent }, signal) => callback(agent, signal),
     catch: Schema.decodeUnknownSync(Schema.instanceOf(XRPCError)),
   });
 
