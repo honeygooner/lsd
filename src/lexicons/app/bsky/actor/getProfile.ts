@@ -7,7 +7,7 @@ export const id = "app.bsky.actor.getProfile";
 
 export const Params = Schema.Struct({
   /** Handle or DID of account to fetch profile of. */
-  actor: Schema.String,
+  actor: Schema.String, // format: at-identifier
 });
 
 export const Output = ProfileViewDetailed;

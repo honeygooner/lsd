@@ -4,8 +4,8 @@ import { Equal, Hash, Schema } from "effect";
 
 export class ProfileViewDetailed
   extends Schema.Class<ProfileViewDetailed>("app.bsky.actor.defs#profileViewDetailed")({
-    did: Schema.String,
-    handle: Schema.String,
+    did: Schema.String, // format: did
+    handle: Schema.String, // format: handle
   })
   implements Equal.Equal
 {
