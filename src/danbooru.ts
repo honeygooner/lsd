@@ -3,14 +3,28 @@ import { NodeHttpClient } from "@effect/platform-node";
 import { Array, Chunk, Data, Effect, Function, Option, Schema, Stream } from "effect";
 import { USER_AGENT } from "./util.ts";
 
-class DanbooruError extends Data.TaggedError("DanbooruError")<{ cause?: unknown }> {}
+class DanbooruError extends Data.TaggedError("DanbooruError") {
+  constructor(fields: typeof DanbooruError.ResponseSchema.Type) {
+    super();
+    this.name = fields.error || super.name;
+    this.message = fields.message;
+    this.stack = fields.backtrace?.join("\n");
+  }
+
+  static readonly ResponseSchema = Schema.Struct({
+    success: Schema.Literal(false),
+    message: Schema.String,
+    error: Schema.NullOr(Schema.String),
+    backtrace: Schema.NullOr(Schema.Array(Schema.String)),
+  });
+}
 
 class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
   dependencies: [NodeHttpClient.layer],
   scoped: (baseUrl: string) =>
-    Effect.map(
-      HttpClient.HttpClient,
-      Function.compose(
+    Effect.map(HttpClient.HttpClient, (httpClient) =>
+      Function.pipe(
+        httpClient,
         HttpClient.mapRequest(
           Function.flow(
             HttpClientRequest.prependUrl(baseUrl),
@@ -19,12 +33,12 @@ class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
             HttpClientRequest.setUrlParam("format", "json"),
           ),
         ),
-        HttpClient.transformResponse(
-          Effect.flatMap(
-            HttpClientResponse.matchStatus({
-              "2xx": (response) => Effect.succeed(response),
-              orElse: (response) => new DanbooruError({ cause: response }),
-            }),
+        HttpClient.filterStatusOk,
+        HttpClient.catchTag("ResponseError", (error) =>
+          Function.pipe(
+            error.response.json,
+            Effect.flatMap(Schema.decodeUnknown(DanbooruError.ResponseSchema)),
+            Effect.flatMap((fields) => new DanbooruError(fields)),
           ),
         ),
       ),
