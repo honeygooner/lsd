@@ -1,6 +1,6 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
-import { Array, Chunk, Data, Effect, Function, Option, Schema, Stream } from "effect";
+import { Array, Chunk, Data, Effect, Function, Option, Schedule, Schema, Stream } from "effect";
 import { USER_AGENT } from "./util.ts";
 
 class DanbooruError extends Data.TaggedError("DanbooruError") {
@@ -34,6 +34,10 @@ class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
           ),
         ),
         HttpClient.filterStatusOk,
+        HttpClient.retryTransient({
+          schedule: Schedule.exponential("125 millis"),
+          times: 5,
+        }),
         HttpClient.catchTag("ResponseError", (error) =>
           Function.pipe(
             error.response.json,

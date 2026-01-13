@@ -1,6 +1,6 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
-import { Data, Effect, Function, Schema } from "effect";
+import { Data, Effect, Function, Schedule, Schema } from "effect";
 
 export class XrpcError extends Data.TaggedError("XrpcError") {
   constructor(fields: typeof XrpcError.ResponseSchema.Type) {
@@ -24,6 +24,10 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
         httpClient,
         HttpClient.mapRequest(HttpClientRequest.prependUrl(serviceUrl)),
         HttpClient.filterStatusOk,
+        HttpClient.retryTransient({
+          schedule: Schedule.exponential("125 millis"),
+          times: 5,
+        }),
         HttpClient.catchTag("ResponseError", (error) =>
           Function.pipe(
             error.response.json,
