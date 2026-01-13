@@ -45,7 +45,7 @@ export function makeQuery<Params extends UrlParams.Input, Output>(def: {
   Output: Schema.Schema<Output, any>;
 }) {
   return (params: Params) =>
-    Effect.flatMap(XrpcClient, (client) =>
+    XrpcClient.use((client) =>
       Function.pipe(
         params,
         Schema.validate(def.Params),

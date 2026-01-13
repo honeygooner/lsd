@@ -1,5 +1,5 @@
 import { NodeRuntime } from "@effect/platform-node";
-import { Effect, Function, HashSet, Logger, LogLevel, Sink, Stream } from "effect";
+import { Effect, Function, HashSet, Logger, LogLevel, Option, Sink, Stream } from "effect";
 import * as Bluesky from "./bluesky.ts";
 import * as Danbooru from "./danbooru.ts";
 
@@ -22,7 +22,7 @@ const program = Function.pipe(
       ),
     { concurrency: 10 },
   ),
-  Stream.filterMap(Function.identity),
+  Stream.filterMap(Option.map(({ did }) => did)),
   Stream.run(Sink.collectAllToSet()),
   Effect.tap((hashSet) => Effect.logInfo(`${HashSet.size(hashSet)} artists`)),
 );

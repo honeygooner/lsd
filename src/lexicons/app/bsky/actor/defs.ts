@@ -1,16 +1,14 @@
 // see: https://github.com/bluesky-social/atproto/blob/main/lexicons/app/bsky/actor/defs.json
 
-import { Equal, Hash, Schema } from "effect";
+import { Schema } from "effect";
 
-export class ProfileViewDetailed
-  extends Schema.Class<ProfileViewDetailed>("app.bsky.actor.defs#profileViewDetailed")({
-    did: Schema.String, // format: did
-    handle: Schema.String, // format: handle
-  })
-  implements Equal.Equal
-{
-  [Equal.symbol] = (that: Equal.Equal) =>
-    that instanceof ProfileViewDetailed && Equal.equals(this.did, that.did);
+export const id = "app.bsky.actor.defs";
 
-  [Hash.symbol] = () => Hash.hash(this.did);
-}
+export class ProfileViewBasic extends Schema.Class<ProfileViewBasic>(`${id}#profileViewBasic`)({
+  did: Schema.String, // format: did
+  handle: Schema.String, // format: handle
+}) {}
+
+export class ProfileViewDetailed extends ProfileViewBasic.extend<ProfileViewDetailed>(
+  `${id}#profileViewDetailed`,
+)({}) {}
