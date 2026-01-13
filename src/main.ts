@@ -28,7 +28,7 @@ const program = Function.pipe(
 );
 
 Function.pipe(
-  Effect.provide(program, [Bluesky.AppViewCached, Danbooru.Test]),
+  Effect.provide(program, [Bluesky.AppViewCached, Danbooru.Testbooru]),
   Logger.withMinimumLogLevel(LogLevel.Debug),
   NodeRuntime.runMain(),
 );

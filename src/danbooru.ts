@@ -19,7 +19,7 @@ class DanbooruError extends Data.TaggedError("DanbooruError") {
   });
 }
 
-class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
+class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", {
   dependencies: [NodeHttpClient.layer],
   effect: (baseUrl: string) =>
     Effect.map(HttpClient.HttpClient, (httpClient) =>
@@ -49,8 +49,8 @@ class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
     ),
 }) {}
 
-export const Live = Danbooru.Default("https://danbooru.donmai.us");
-export const Test = Danbooru.Default("https://testbooru.donmai.us");
+export const Danbooru = DanbooruClient.Default("https://danbooru.donmai.us");
+export const Testbooru = DanbooruClient.Default("https://testbooru.donmai.us");
 
 class ArtistUrl extends Schema.Class<ArtistUrl>("ArtistUrl")({
   id: Schema.Number,
@@ -63,7 +63,7 @@ class ArtistUrl extends Schema.Class<ArtistUrl>("ArtistUrl")({
 
 export const getArtistUrls = (urlParams?: CommonUrlParameters) =>
   Effect.flatMap(
-    Danbooru.use((danbooru) => danbooru.get("/artist_urls", { urlParams })),
+    DanbooruClient.use((client) => client.get("/artist_urls", { urlParams })),
     HttpClientResponse.schemaBodyJson(Schema.Array(ArtistUrl)),
   );
 
