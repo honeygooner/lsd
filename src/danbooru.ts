@@ -21,7 +21,7 @@ class DanbooruError extends Data.TaggedError("DanbooruError") {
 
 class Danbooru extends Effect.Service<Danbooru>()("Danbooru", {
   dependencies: [NodeHttpClient.layer],
-  scoped: (baseUrl: string) =>
+  effect: (baseUrl: string) =>
     Effect.map(HttpClient.HttpClient, (httpClient) =>
       Function.pipe(
         httpClient,
