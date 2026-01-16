@@ -44,11 +44,11 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
-          Effect.flatMap(responseError.response.json, (fields) =>
+          Effect.flatMap(responseError.response.json, (props) =>
             // the Schema.TaggedError constructor applies the "DanbooruError" tag and handles
             // validation automatically, so we opt out of type checking here
             // (it also makes Effect.fail unnecessary here, but I had enough shit from ai about it)
-            Effect.fail(new DanbooruError(fields as any)),
+            Effect.fail(new DanbooruError(props as any)),
           ),
         ),
       ),

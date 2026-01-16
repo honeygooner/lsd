@@ -21,9 +21,9 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
-          Effect.flatMap(responseError.response.json, (fields) =>
+          Effect.flatMap(responseError.response.json, (props) =>
             // see the HttpClient definition in file://./danbooru.ts
-            Effect.fail(new XrpcError(fields as any)),
+            Effect.fail(new XrpcError(props as any)),
           ),
         ),
       ),
