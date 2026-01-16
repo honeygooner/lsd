@@ -18,7 +18,7 @@ const program = Function.pipe(
         Effect.annotateLogs({ actor }),
         Effect.option,
       ),
-    { concurrency: 10 },
+    { concurrency: 0b1000 },
   ),
   Stream.filterMap(Option.map(({ did }) => did)),
   Stream.run(Sink.collectAllToSet()),
