@@ -1,20 +1,12 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
-import { Data, Effect, Function, Schedule, Schema } from "effect";
+import { Effect, Function, Schedule, Schema } from "effect";
 
-export class XrpcError extends Data.TaggedError("XrpcError") {
-  constructor(fields: typeof XrpcError.ResponseSchema.Type) {
-    super();
-    this.name = fields.error;
-    this.message = fields.message || super.message;
-  }
-
-  /** @see {@link https://atproto.com/specs/xrpc#error-responses | AT Protocol | HTTP API (XRPC) | Error Responses} */
-  static readonly ResponseSchema = Schema.Struct({
-    error: Schema.String,
-    message: Schema.optional(Schema.String),
-  });
-}
+/** @see {@link https://atproto.com/specs/xrpc#error-responses | AT Protocol | HTTP API (XRPC) | Error Responses} */
+export class XrpcError extends Schema.TaggedError<XrpcError>()("XrpcError", {
+  error: Schema.String,
+  message: Schema.optional(Schema.String),
+}) {}
 
 export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
   dependencies: [NodeHttpClient.layer],
@@ -28,11 +20,10 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
           schedule: Schedule.exponential("125 millis"),
           times: 5,
         }),
-        HttpClient.catchTag("ResponseError", (error) =>
-          Function.pipe(
-            error.response.json,
-            Effect.flatMap(Schema.decodeUnknown(XrpcError.ResponseSchema)),
-            Effect.flatMap((fields) => new XrpcError(fields)),
+        HttpClient.catchTag("ResponseError", (responseError) =>
+          Effect.flatMap(responseError.response.json, (fields) =>
+            // see the HttpClient definition in file://./danbooru.ts
+            Effect.fail(new XrpcError(fields as any)),
           ),
         ),
       ),
