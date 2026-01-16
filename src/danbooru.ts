@@ -1,32 +1,27 @@
-import { HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform";
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
-import { Chunk, Data, Effect, Function, Option, Schedule, Schema, Stream } from "effect";
+import { Chunk, Effect, Function, Option, Schedule, Schema, Stream } from "effect";
 import pkg from "../package.json" with { type: "json" };
-
-/** @see {@link https://github.com/danbooru/danbooru/blob/757a709/app/controllers/application_controller.rb#L172 | danbooru/app/controllers/application_controller.rb#L172} */
-class DanbooruError extends Schema.Class<DanbooruError>("DanbooruError")({
-  success: Schema.Literal(false),
-  message: Schema.String,
-  error: Schema.NullOr(Schema.String),
-  backtrace: Schema.NullOr(Schema.Array(Schema.String)),
-}) {}
 
 /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters | Danbooru Wiki | help:common url parameters} */
 class DanbooruParams extends Schema.Class<DanbooruParams>("DanbooruParams")({
   /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters#dtext-limit | Danbooru Wiki | help:common url parameters} */
-  limit: Schema.optional(Schema.NumberFromString),
+  limit: Schema.optional(Schema.extend(Schema.Positive, Schema.Int)),
   /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters#dtext-page | Danbooru Wiki | help:common url parameters} */
-  page: Schema.optional(Schema.Union(Schema.String, Schema.NumberFromString)),
+  page: Schema.optional(
+    Schema.Union(
+      Schema.String.pipe(Schema.pattern(/^[ab][1-9][0-9]*$/)),
+      Schema.extend(Schema.Positive, Schema.Int),
+    ),
+  ),
 }) {}
 
-/** @see {@link https://github.com/danbooru/danbooru/blob/757a709/db/structure.sql#L253-L260 | danbooru/db/structure.sql#L253-L260} */
-class ArtistUrl extends Schema.Class<ArtistUrl>("ArtistUrl")({
-  id: Schema.Number,
-  artist_id: Schema.Number,
-  url: Schema.String,
-  created_at: Schema.Date,
-  updated_at: Schema.Date,
-  is_active: Schema.Boolean,
+/** @see {@link https://github.com/danbooru/danbooru/blob/757a709/app/controllers/application_controller.rb#L172 | danbooru/app/controllers/application_controller.rb#L172} */
+class DanbooruError extends Schema.TaggedError<DanbooruError>()("DanbooruError", {
+  success: Schema.Literal(false),
+  message: Schema.String,
+  error: Schema.NullOr(Schema.String),
+  backtrace: Schema.NullOr(Schema.Array(Schema.String)),
 }) {}
 
 class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", {
@@ -43,46 +38,56 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
             HttpClientRequest.setUrlParam("format", "json"),
           ),
         ),
-        HttpClient.mapRequestEffect((request) =>
-          Function.pipe(
-            request.urlParams,
-            UrlParams.schemaStruct(DanbooruParams),
-            Effect.as(request),
-          ),
-        ),
         HttpClient.filterStatusOk,
         HttpClient.retryTransient({
           schedule: Schedule.exponential("125 millis"),
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
-          Function.pipe(
-            responseError.response.json,
-            Effect.flatMap(Schema.decodeUnknown(DanbooruError)),
-            Effect.flatMap((danbooruError) => new DanbooruClientError(danbooruError)),
+          Effect.flatMap(responseError.response.json, (fields) =>
+            // the Schema.TaggedError constructor applies the "DanbooruError" tag and handles
+            // validation automatically, so we opt out of type checking here
+            // (it also makes Effect.fail unnecessary here, but I had enough shit from ai about it)
+            Effect.fail(new DanbooruError(fields as any)),
           ),
         ),
       ),
     ),
 }) {}
 
-class DanbooruClientError extends Data.TaggedError("DanbooruClientError")<DanbooruError> {}
-
 export const Danbooru = DanbooruClient.Default("https://danbooru.donmai.us");
 export const Testbooru = DanbooruClient.Default("https://testbooru.donmai.us");
 
-export function getArtistUrls(urlParams?: DanbooruParams & UrlParams.CoercibleRecord) {
-  return Effect.flatMap(
+/** @see {@link https://github.com/danbooru/danbooru/blob/757a709/db/structure.sql#L253-L260 | danbooru/db/structure.sql#L253-L260} */
+class ArtistUrl extends Schema.Class<ArtistUrl>("ArtistUrl")({
+  id: Schema.Number,
+  artist_id: Schema.Number,
+  url: Schema.String,
+  created_at: Schema.DateFromString,
+  updated_at: Schema.DateFromString,
+  is_active: Schema.Boolean,
+}) {}
+
+class GetArtistUrlsParams extends Schema.Class<GetArtistUrlsParams>("GetArtistUrlsParams")({
+  ...DanbooruParams.fields,
+  "search[url_matches]": Schema.optional(Schema.String),
+}) {}
+
+export function getArtistUrls(params?: GetArtistUrlsParams) {
+  const urlParams = new GetArtistUrlsParams(params) as HttpClientRequest.Options["urlParams"];
+  return Function.pipe(
     DanbooruClient.use((client) => client.get("/artist_urls", { urlParams })),
-    HttpClientResponse.schemaBodyJson(Schema.Array(ArtistUrl)),
+    Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(ArtistUrl))),
   );
 }
 
-export function getArtistUrlsStream(urlParams?: DanbooruParams & UrlParams.CoercibleRecord) {
-  return Stream.paginateChunkEffect(urlParams?.page, (page) =>
-    Effect.map(getArtistUrls({ ...urlParams, page }), (artistUrls) => [
-      Chunk.fromIterable(artistUrls),
-      Option.map(Option.fromNullable(artistUrls.at(-1)), ({ id }) => `b${id}`),
-    ]),
+export function getArtistUrlsStream(params?: GetArtistUrlsParams) {
+  return Stream.paginateChunkEffect(params?.page, (page) =>
+    getArtistUrls({ ...params, page }).pipe(
+      Effect.map((artistUrls) => [
+        Chunk.fromIterable(artistUrls),
+        Option.map(Option.fromNullable(artistUrls.at(-1)), ({ id }) => `b${id}`),
+      ]),
+    ),
   );
 }

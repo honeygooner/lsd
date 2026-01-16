@@ -6,9 +6,7 @@ import * as Danbooru from "./danbooru.ts";
 const program = Function.pipe(
   Danbooru.getArtistUrlsStream({
     limit: 1000,
-    search: {
-      url_matches: "*://bsky.app/profile/*",
-    },
+    "search[url_matches]": "*://bsky.app/profile/*",
   }),
   Stream.filterMap(({ url }) => Bluesky.getIdentifierFromProfileUrl(url)),
   Stream.mapEffect(
