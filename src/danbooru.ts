@@ -47,8 +47,8 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
           Function.pipe(
-            responseError.response.json,
-            Effect.flatMap(Schema.decodeUnknown(DanbooruError.Response)),
+            responseError.response,
+            HttpClientResponse.schemaBodyJson(DanbooruError.Response),
             Effect.flatMap((props) => new DanbooruError(props, { disableValidation: true })),
           ),
         ),

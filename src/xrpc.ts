@@ -24,8 +24,8 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
           Function.pipe(
-            responseError.response.json,
-            Effect.flatMap(Schema.decodeUnknown(XrpcError.Response)),
+            responseError.response,
+            HttpClientResponse.schemaBodyJson(XrpcError.Response),
             Effect.flatMap((props) => new XrpcError(props, { disableValidation: true })),
           ),
         ),
