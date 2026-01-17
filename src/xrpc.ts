@@ -19,7 +19,7 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
         HttpClient.mapRequest(HttpClientRequest.prependUrl(serviceUrl)),
         HttpClient.filterStatusOk,
         HttpClient.retryTransient({
-          schedule: Schedule.exponential("125 millis"),
+          schedule: Schedule.jittered(Schedule.exponential("125 millis")),
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>

@@ -42,7 +42,7 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
         ),
         HttpClient.filterStatusOk,
         HttpClient.retryTransient({
-          schedule: Schedule.exponential("125 millis"),
+          schedule: Schedule.jittered(Schedule.exponential("125 millis")),
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
