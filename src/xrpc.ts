@@ -1,6 +1,7 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
 import { Effect, Function, Schedule, Schema } from "effect";
+import { unsafeSchemaMake } from "./utils.ts";
 
 /** @see {@link https://atproto.com/specs/xrpc#error-responses | AT Protocol | HTTP API (XRPC) | Error Responses} */
 export class XrpcError extends Schema.TaggedError<XrpcError>()("XrpcError", {
@@ -21,10 +22,7 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
-          Effect.flatMap(responseError.response.json, (props) =>
-            // see the HttpClient definition in file://./danbooru.ts
-            Effect.fail(new XrpcError(props as any)),
-          ),
+          Effect.flatMap(responseError.response.json, unsafeSchemaMake(XrpcError)),
         ),
       ),
     ),

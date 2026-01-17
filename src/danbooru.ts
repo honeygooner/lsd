@@ -1,7 +1,7 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
 import { Chunk, Effect, Function, Option, Schedule, Schema, Stream } from "effect";
-import { USER_AGENT } from "./utils.ts";
+import { unsafeSchemaMake, USER_AGENT } from "./utils.ts";
 
 /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters | Danbooru Wiki | help:common url parameters} */
 class DanbooruParams extends Schema.Class<DanbooruParams>("DanbooruParams")({
@@ -44,12 +44,7 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
-          Effect.flatMap(responseError.response.json, (props) =>
-            // the Schema.TaggedError constructor applies the "DanbooruError" tag and synchronously
-            // validates props automatically, so we opt out of type checking here
-            // (it also makes Effect.fail unnecessary here, but I had enough shit from ai about it)
-            Effect.fail(new DanbooruError(props as any)),
-          ),
+          Effect.flatMap(responseError.response.json, unsafeSchemaMake(DanbooruError)),
         ),
       ),
     ),
@@ -74,7 +69,7 @@ class GetArtistUrlsParams extends Schema.Class<GetArtistUrlsParams>("GetArtistUr
 }) {}
 
 export function getArtistUrls(params?: GetArtistUrlsParams) {
-  const urlParams = new GetArtistUrlsParams(params) as HttpClientRequest.Options["urlParams"];
+  const urlParams = { ...unsafeSchemaMake(GetArtistUrlsParams)(params) };
   return Function.pipe(
     DanbooruClient.use((client) => client.get("/artist_urls", { urlParams })),
     Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(ArtistUrl))),
