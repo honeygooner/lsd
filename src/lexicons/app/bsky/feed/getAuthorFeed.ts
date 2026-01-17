@@ -7,7 +7,7 @@ export const id = "app.bsky.feed.getAuthorFeed";
 
 // main: Get a view of an actor's 'author feed' (post and reposts by the author). Does not require auth.
 
-export const Params = Schema.Struct({
+export class Params extends Schema.Class<Params>(`${id}#main (params)`)({
   actor: Schema.String, // format: at-identifier
   limit: Schema.optional(Schema.Int.pipe(Schema.between(1, 100))),
   cursor: Schema.optional(Schema.String),
@@ -24,9 +24,9 @@ export const Params = Schema.Struct({
     ),
   ),
   includePins: Schema.optional(Schema.Boolean),
-});
+}) {}
 
-export const Output = Schema.Struct({
+export class Output extends Schema.Class<Output>(`${id}#main (output)`)({
   feed: Schema.Array(AppBskyFeedDefs.FeedViewPost),
   cursor: Schema.optional(Schema.String),
-});
+}) {}

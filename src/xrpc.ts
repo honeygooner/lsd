@@ -28,16 +28,16 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
     ),
 }) {}
 
-export function makeQuery<Params extends UrlParams.Input, Output>(def: {
+export function makeQuery<Params, Input extends UrlParams.Input, Output>(def: {
   id: string;
-  Params: Schema.Schema<Params, any>;
+  Params: Schema.Schema<Params, Input>;
   Output: Schema.Schema<Output, any>;
 }) {
   return (params: Params) =>
     XrpcClient.use((client) =>
       Function.pipe(
         params,
-        Schema.validate(def.Params),
+        Schema.validate(Schema.encodedBoundSchema(def.Params)),
         Effect.flatMap((urlParams) => client.get(`/xrpc/${def.id}`, { urlParams })),
         Effect.flatMap(HttpClientResponse.schemaBodyJson(def.Output)),
       ),
