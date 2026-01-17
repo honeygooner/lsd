@@ -1,7 +1,7 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
 import { Chunk, Effect, Function, Option, Schedule, Schema, Stream } from "effect";
-import { unsafeSchemaMake, USER_AGENT } from "./utils.ts";
+import pkg from "../package.json" with { type: "json" };
 
 /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters | Danbooru Wiki | help:common url parameters} */
 class DanbooruParams extends Schema.Class<DanbooruParams>("DanbooruParams")({
@@ -22,7 +22,9 @@ class DanbooruError extends Schema.TaggedError<DanbooruError>()("DanbooruError",
   message: Schema.String,
   error: Schema.NullOr(Schema.String),
   backtrace: Schema.NullOr(Schema.Array(Schema.String)),
-}) {}
+}) {
+  static readonly Response = Function.pipe(Schema.encodedBoundSchema(this), Schema.omit("_tag"));
+}
 
 class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", {
   dependencies: [NodeHttpClient.layer],
@@ -34,7 +36,7 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
           Function.flow(
             HttpClientRequest.prependUrl(baseUrl),
             HttpClientRequest.setHeader("Accept", "application/json"),
-            HttpClientRequest.setHeader("User-Agent", USER_AGENT),
+            HttpClientRequest.setHeader("User-Agent", `${pkg.name}/${pkg.version} (${pkg.repository.url})`), // prettier-ignore
             HttpClientRequest.setUrlParam("format", "json"),
           ),
         ),
@@ -44,7 +46,11 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
-          Effect.flatMap(responseError.response.json, unsafeSchemaMake(DanbooruError)),
+          Function.pipe(
+            responseError.response.json,
+            Effect.flatMap(Schema.decodeUnknown(DanbooruError.Response)),
+            Effect.flatMap((props) => new DanbooruError(props, { disableValidation: true })),
+          ),
         ),
       ),
     ),
@@ -69,10 +75,13 @@ class GetArtistUrlsParams extends Schema.Class<GetArtistUrlsParams>("GetArtistUr
 }) {}
 
 export function getArtistUrls(params?: GetArtistUrlsParams) {
-  const urlParams = { ...unsafeSchemaMake(GetArtistUrlsParams)(params) };
-  return Function.pipe(
-    DanbooruClient.use((client) => client.get("/artist_urls", { urlParams })),
-    Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(ArtistUrl))),
+  return DanbooruClient.use((client) =>
+    Function.pipe(
+      params,
+      Schema.validate(Schema.encodedBoundSchema(GetArtistUrlsParams)),
+      Effect.flatMap((urlParams) => client.get("/artist_urls", { urlParams })),
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(ArtistUrl))),
+    ),
   );
 }
 

@@ -1,13 +1,14 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
 import { Effect, Function, Schedule, Schema } from "effect";
-import { unsafeSchemaMake } from "./utils.ts";
 
 /** @see {@link https://atproto.com/specs/xrpc#error-responses | AT Protocol | HTTP API (XRPC) | Error Responses} */
 export class XrpcError extends Schema.TaggedError<XrpcError>()("XrpcError", {
   error: Schema.String,
   message: Schema.optional(Schema.String),
-}) {}
+}) {
+  static readonly Response = Function.pipe(Schema.encodedBoundSchema(this), Schema.omit("_tag"));
+}
 
 export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
   dependencies: [NodeHttpClient.layer],
@@ -22,7 +23,11 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
           times: 5,
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
-          Effect.flatMap(responseError.response.json, unsafeSchemaMake(XrpcError)),
+          Function.pipe(
+            responseError.response.json,
+            Effect.flatMap(Schema.decodeUnknown(XrpcError.Response)),
+            Effect.flatMap((props) => new XrpcError(props, { disableValidation: true })),
+          ),
         ),
       ),
     ),
