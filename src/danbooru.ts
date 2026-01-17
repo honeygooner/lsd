@@ -1,7 +1,7 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
 import { Chunk, Effect, Function, Option, Schedule, Schema, Stream } from "effect";
-import pkg from "../package.json" with { type: "json" };
+import { USER_AGENT } from "./utils.ts";
 
 /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters | Danbooru Wiki | help:common url parameters} */
 class DanbooruParams extends Schema.Class<DanbooruParams>("DanbooruParams")({
@@ -34,7 +34,7 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
           Function.flow(
             HttpClientRequest.prependUrl(baseUrl),
             HttpClientRequest.setHeader("Accept", "application/json"),
-            HttpClientRequest.setHeader("User-Agent", `${pkg.name}/${pkg.version} (${pkg.repository.url})`), // prettier-ignore
+            HttpClientRequest.setHeader("User-Agent", USER_AGENT),
             HttpClientRequest.setUrlParam("format", "json"),
           ),
         ),
