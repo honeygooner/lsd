@@ -2,10 +2,11 @@ import { NodeRuntime } from "@effect/platform-node";
 import { Effect, Function, HashSet, Logger, LogLevel, Option, Sink, Stream } from "effect";
 import * as Bluesky from "./bluesky.ts";
 import * as Danbooru from "./danbooru.ts";
+import * as Kv from "./kv.ts";
 
 const program = Function.pipe(
   Danbooru.getArtistUrlsStream({
-    limit: 1000,
+    limit: 100,
     "search[url_matches]": "*://bsky.app/profile/*",
   }),
   Stream.filterMap(({ url }) => Bluesky.getIdentifierFromProfileUrl(url)),
@@ -26,7 +27,7 @@ const program = Function.pipe(
 );
 
 Function.pipe(
-  Effect.provide(program, [Bluesky.AppViewCached, Danbooru.Testbooru]),
+  Effect.provide(program, [Bluesky.AppViewCached, Danbooru.Testbooru, Kv.Fs]),
   Logger.withMinimumLogLevel(LogLevel.Debug),
   NodeRuntime.runMain(),
 );

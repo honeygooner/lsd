@@ -1,5 +1,7 @@
+data/
+
 # dependencies
-node_modules
+node_modules/
 
 # environment
 .env

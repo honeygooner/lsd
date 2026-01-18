@@ -1,6 +1,7 @@
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
-import { Chunk, Effect, Function, Option, Schedule, Schema, Stream } from "effect";
+import { Chunk, Effect, Function, Hash, Option, Schedule, Schema } from "effect";
+import * as Kv from "./kv.ts";
 import pkg from "../package.json" with { type: "json" };
 
 /** @see {@link https://danbooru.donmai.us/wiki_pages/help:common_url_parameters | Danbooru Wiki | help:common url parameters} */
@@ -86,7 +87,14 @@ export function getArtistUrls(params?: GetArtistUrlsParams) {
 }
 
 export function getArtistUrlsStream(params?: GetArtistUrlsParams) {
-  return Stream.paginateChunkEffect(params?.page, (page) =>
+  const hashableParams = new GetArtistUrlsParams({ ...params, limit: undefined, page: undefined });
+  const key = Function.pipe(
+    Hash.string(`${DanbooruClient.key}:${getArtistUrlsStream.name}`),
+    Hash.combine(Hash.hash(hashableParams)),
+    (hash) => Hash.optimize(hash).toString(16),
+  );
+
+  return Kv.createRecoverableStream(key, params?.page, (page) =>
     getArtistUrls({ ...params, page }).pipe(
       Effect.map((artistUrls) => [
         Chunk.fromIterable(artistUrls),

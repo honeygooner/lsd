@@ -1,7 +1,8 @@
-import { Chunk, Effect, Option, Stream } from "effect";
+import { Chunk, Effect, Function, Hash, Option } from "effect";
 import * as AppBskyActorGetProfile from "./lexicons/app/bsky/actor/getProfile.ts";
 import * as AppBskyFeedGetAuthorFeed from "./lexicons/app/bsky/feed/getAuthorFeed.ts";
 import { makeQuery, XrpcClient } from "./xrpc.ts";
+import * as Kv from "./kv.ts";
 
 const APP_VIEW_URL = "https://api.bsky.app";
 const APP_VIEW_CACHED_URL = "https://public.api.bsky.app";
@@ -12,13 +13,22 @@ export const AppView = XrpcClient.Default(APP_VIEW_URL);
 export const AppViewCached = XrpcClient.Default(APP_VIEW_CACHED_URL);
 
 export const getAuthorFeed = makeQuery(AppBskyFeedGetAuthorFeed);
-export const getAuthorFeedStream = (...[params]: Parameters<typeof getAuthorFeed>) =>
-  Stream.paginateChunkEffect(params.cursor, (cursor) =>
+
+export function getAuthorFeedStream(params: AppBskyFeedGetAuthorFeed.Params) {
+  const hashableParams = new AppBskyFeedGetAuthorFeed.Params({ ...params, cursor: undefined, limit: undefined }); // prettier-ignore
+  const key = Function.pipe(
+    Hash.string(`${XrpcClient.key}:${getAuthorFeedStream.name}`),
+    Hash.combine(Hash.hash(hashableParams)),
+    (hash) => hash.toString(16),
+  );
+
+  return Kv.createRecoverableStream(key, params.cursor, (cursor) =>
     Effect.map(getAuthorFeed({ ...params, cursor }), (output) => [
       Chunk.fromIterable(output.feed),
       Option.fromNullable(output.cursor),
     ]),
   );
+}
 
 export const getProfile = makeQuery(AppBskyActorGetProfile);
 
