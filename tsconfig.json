@@ -2,10 +2,17 @@
   "compilerOptions": {
     "strict": true,
     "noEmit": true,
+    "incremental": true,
+    "skipLibCheck": true,
+
+    // see: https://nodejs.org/docs/latest-v24.x/api/typescript.html#type-stripping
     "target": "esnext",
     "module": "nodenext",
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+
+    // see: https://effect.website/docs/getting-started/devtools/#effect-lsp
+    "plugins": [{ "name": "@effect/language-service" }]
   }
 }
