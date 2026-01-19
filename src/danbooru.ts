@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "@effect/platform";
+import { HttpClient, HttpClientRequest } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
 import { Chunk, Effect, Function, Hash, Option, Schedule, Schema } from "effect";
 import * as Kv from "./kv.ts";
@@ -48,8 +48,8 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
           Function.pipe(
-            responseError.response,
-            HttpClientResponse.schemaBodyJson(DanbooruError),
+            responseError.response.json,
+            Effect.flatMap(Schema.decodeUnknown(DanbooruError)),
             Effect.flatMap((danbooruError) => Effect.fail(danbooruError)),
           ),
         ),
@@ -81,7 +81,8 @@ export function getArtistUrls(params?: GetArtistUrlsParams) {
       params,
       Schema.validate(Schema.encodedBoundSchema(GetArtistUrlsParams)),
       Effect.flatMap((urlParams) => client.get("/artist_urls", { urlParams })),
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(ArtistUrl))),
+      Effect.flatMap((response) => response.json),
+      Effect.flatMap(Schema.decodeUnknown(Schema.Array(ArtistUrl))),
     ),
   );
 }

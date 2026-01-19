@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientRequest, HttpClientResponse, UrlParams } from "@effect/platform";
+import { HttpClient, HttpClientRequest, UrlParams } from "@effect/platform";
 import { NodeHttpClient } from "@effect/platform-node";
 import { Effect, Function, Schedule, Schema } from "effect";
 
@@ -24,8 +24,8 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
         }),
         HttpClient.catchTag("ResponseError", (responseError) =>
           Function.pipe(
-            responseError.response,
-            HttpClientResponse.schemaBodyJson(XrpcError),
+            responseError.response.json,
+            Effect.flatMap(Schema.decodeUnknown(XrpcError)),
             Effect.flatMap((xrpcError) => Effect.fail(xrpcError)),
           ),
         ),
@@ -44,7 +44,8 @@ export function makeQuery<Params, Input extends UrlParams.Input, Output>(def: {
         params,
         Schema.validate(Schema.encodedBoundSchema(def.Params)),
         Effect.flatMap((urlParams) => client.get(`/xrpc/${def.id}`, { urlParams })),
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(def.Output)),
+        Effect.flatMap((response) => response.json),
+        Effect.flatMap(Schema.decodeUnknown(def.Output)),
       ),
     );
 }
