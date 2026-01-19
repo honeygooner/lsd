@@ -18,13 +18,13 @@ class DanbooruParams extends Schema.Class<DanbooruParams>("DanbooruParams")({
 }) {}
 
 /** @see {@link https://github.com/danbooru/danbooru/blob/757a709/app/controllers/application_controller.rb#L172 | danbooru/app/controllers/application_controller.rb#L172} */
-class DanbooruError extends Schema.TaggedError<DanbooruError>()("DanbooruError", {
+class DanbooruError extends Schema.Class<DanbooruError>("DanbooruError")({
   success: Schema.Literal(false),
   message: Schema.String,
   error: Schema.NullOr(Schema.String),
   backtrace: Schema.NullOr(Schema.Array(Schema.String)),
 }) {
-  static readonly Response = Function.pipe(Schema.encodedBoundSchema(this), Schema.omit("_tag"));
+  readonly _tag = "DanbooruError";
 }
 
 class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", {
@@ -49,8 +49,8 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
         HttpClient.catchTag("ResponseError", (responseError) =>
           Function.pipe(
             responseError.response,
-            HttpClientResponse.schemaBodyJson(DanbooruError.Response),
-            Effect.flatMap((props) => new DanbooruError(props, { disableValidation: true })),
+            HttpClientResponse.schemaBodyJson(DanbooruError),
+            Effect.flatMap((danbooruError) => Effect.fail(danbooruError)),
           ),
         ),
       ),

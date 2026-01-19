@@ -3,11 +3,11 @@ import { NodeHttpClient } from "@effect/platform-node";
 import { Effect, Function, Schedule, Schema } from "effect";
 
 /** @see {@link https://atproto.com/specs/xrpc#error-responses | AT Protocol | HTTP API (XRPC) | Error Responses} */
-export class XrpcError extends Schema.TaggedError<XrpcError>()("XrpcError", {
+export class XrpcError extends Schema.Class<XrpcError>("XrpcError")({
   error: Schema.String,
   message: Schema.optional(Schema.String),
 }) {
-  static readonly Response = Function.pipe(Schema.encodedBoundSchema(this), Schema.omit("_tag"));
+  readonly _tag = "XrpcError";
 }
 
 export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
@@ -25,8 +25,8 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
         HttpClient.catchTag("ResponseError", (responseError) =>
           Function.pipe(
             responseError.response,
-            HttpClientResponse.schemaBodyJson(XrpcError.Response),
-            Effect.flatMap((props) => new XrpcError(props, { disableValidation: true })),
+            HttpClientResponse.schemaBodyJson(XrpcError),
+            Effect.flatMap((xrpcError) => Effect.fail(xrpcError)),
           ),
         ),
       ),
