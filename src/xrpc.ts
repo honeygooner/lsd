@@ -18,17 +18,19 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
         httpClient,
         HttpClient.mapRequest(HttpClientRequest.prependUrl(serviceUrl)),
         HttpClient.filterStatusOk,
+        HttpClient.catchTag("ResponseError", (responseError) =>
+          responseError.reason !== "StatusCode"
+            ? Effect.fail(responseError)
+            : Function.pipe(
+                responseError.response.json,
+                Effect.flatMap(Schema.decodeUnknown(XrpcError)),
+                Effect.flatMap((xrpcError) => Effect.fail(xrpcError)),
+              ),
+        ),
         HttpClient.retryTransient({
           schedule: Schedule.jittered(Schedule.exponential("125 millis")),
           times: 5,
         }),
-        HttpClient.catchTag("ResponseError", (responseError) =>
-          Function.pipe(
-            responseError.response.json,
-            Effect.flatMap(Schema.decodeUnknown(XrpcError)),
-            Effect.flatMap((xrpcError) => Effect.fail(xrpcError)),
-          ),
-        ),
       ),
     ),
 }) {}

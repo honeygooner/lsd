@@ -42,17 +42,19 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
           ),
         ),
         HttpClient.filterStatusOk,
+        HttpClient.catchTag("ResponseError", (responseError) =>
+          responseError.reason !== "StatusCode"
+            ? Effect.fail(responseError)
+            : Function.pipe(
+                responseError.response.json,
+                Effect.flatMap(Schema.decodeUnknown(DanbooruError)),
+                Effect.flatMap((danbooruError) => Effect.fail(danbooruError)),
+              ),
+        ),
         HttpClient.retryTransient({
           schedule: Schedule.jittered(Schedule.exponential("125 millis")),
           times: 5,
         }),
-        HttpClient.catchTag("ResponseError", (responseError) =>
-          Function.pipe(
-            responseError.response.json,
-            Effect.flatMap(Schema.decodeUnknown(DanbooruError)),
-            Effect.flatMap((danbooruError) => Effect.fail(danbooruError)),
-          ),
-        ),
       ),
     ),
 }) {}
