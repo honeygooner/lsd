@@ -28,7 +28,7 @@ export class XrpcClient extends Effect.Service<XrpcClient>()("XrpcClient", {
               ),
         ),
         HttpClient.retryTransient({
-          schedule: Schedule.jittered(Schedule.exponential("125 millis")),
+          schedule: Schedule.jittered(Schedule.exponential(125)),
           times: 5,
         }),
       ),

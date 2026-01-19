@@ -52,7 +52,7 @@ class DanbooruClient extends Effect.Service<DanbooruClient>()("DanbooruClient", 
               ),
         ),
         HttpClient.retryTransient({
-          schedule: Schedule.jittered(Schedule.exponential("125 millis")),
+          schedule: Schedule.jittered(Schedule.exponential(125)),
           times: 5,
         }),
       ),
