@@ -42,7 +42,7 @@ export function makeQuery<Params, Input extends UrlParams.Input, Output>(def: {
     XrpcClient.use((client) =>
       Function.pipe(
         params,
-        Schema.validate(Schema.encodedBoundSchema(def.Params)),
+        Schema.encode(def.Params),
         Effect.flatMap((urlParams) => client.get(`/xrpc/${def.id}`, { urlParams })),
         Effect.flatMap((response) => response.json),
         Effect.flatMap(Schema.decodeUnknown(def.Output)),

@@ -79,7 +79,7 @@ export function getArtistUrls(params?: GetArtistUrlsParams) {
   return DanbooruClient.use((client) =>
     Function.pipe(
       params,
-      Schema.validate(Schema.encodedBoundSchema(GetArtistUrlsParams)),
+      Schema.encode(Schema.UndefinedOr(GetArtistUrlsParams)),
       Effect.flatMap((urlParams) => client.get("/artist_urls", { urlParams })),
       Effect.flatMap((response) => response.json),
       Effect.flatMap(Schema.decodeUnknown(Schema.Array(ArtistUrl))),
