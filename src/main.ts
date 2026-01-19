@@ -3,6 +3,7 @@ import { Effect, Function, Logger, LogLevel, Stream } from "effect";
 import * as Bluesky from "./bluesky.ts";
 import * as Danbooru from "./danbooru.ts";
 import * as Kv from "./kv.ts";
+import * as AppBskyActorGetProfile from "./lexicons/app/bsky/actor/getProfile.ts";
 
 const program = Function.pipe(
   Danbooru.getArtistUrlsStream({
@@ -15,8 +16,9 @@ const program = Function.pipe(
       Function.pipe(
         Bluesky.getProfile({ actor }),
         Effect.tap(() => Effect.logDebug()),
-        Effect.tapErrorCause((cause) => Effect.logWarning(cause)),
+        Effect.tapError((error) => Effect.logError(error)),
         Effect.annotateLogs({ actor }),
+        Effect.withLogSpan(AppBskyActorGetProfile.id),
         Effect.option,
       ),
     { concurrency: 0b1000 },
